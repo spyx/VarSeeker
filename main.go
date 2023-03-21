@@ -10,6 +10,11 @@ import (
     "os"
     "regexp"
 	"sync"
+	"context"
+	"strings"
+	//"time"
+
+	"github.com/chromedp/chromedp"
 )
 
 // global variable find
@@ -39,8 +44,10 @@ func main() {
     filePath := flag.String("f", "", "path to a file containing a list of URLs")
     help := flag.Bool("h",false,"display usage information")
 	silent := flag.Bool("s", false, "hide banner")
+	attack := flag.Bool("a",false, "attack mode")
 	flag.Parse()
 
+	
 
 	if !*silent {
 		fmt.Println(`
@@ -66,9 +73,16 @@ $$ |   $$ |$$$$$$\   $$$$$$\ $$ /  \__| $$$$$$\   $$$$$$\  $$ |  $$\  $$$$$$\   
 		return
 	}
 
-	
+
+	type AttackPayload struct{
+		url string
+		payload string
+	}
+
+	attackJobs := make(chan AttackPayload)
 	jobs := make(chan string)
 	var wg sync.WaitGroup
+	//var attackWg sync.WaitGroup
     // Create a slice to hold the URLs
     var urls []string
 
@@ -124,6 +138,10 @@ $$ |   $$ |$$$$$$\   $$$$$$\ $$ /  \__| $$$$$$\   $$$$$$\  $$ |  $$\  $$$$$$\   
 				matches := varDeclaration.FindAllStringSubmatch(string(body), -1)
 				for _, match := range matches {
 					addToFindVariables(match[1])
+					if (*attack){
+						ap := AttackPayload{url:url,payload:match[1]}
+						attackJobs <- ap
+					}
 				}
 				
 			}
@@ -133,13 +151,38 @@ $$ |   $$ |$$$$$$\   $$$$$$\ $$ /  \__| $$$$$$\   $$$$$$\  $$ |  $$\  $$$$$$\   
 	}
 
 
+	
+
+	
+	
+	go func() {
+		for value := range attackJobs {
+			attack_url := value.url+"?"+value.payload+"=spyx"
+			ctx, cancel := chromedp.NewContext(context.Background())
+			defer cancel()
+			var responseBody string
+			err := chromedp.Run(ctx, chromedp.Navigate(attack_url), chromedp.OuterHTML("html", &responseBody))
+			if err != nil {
+				panic(err)
+			}
+			if strings.Contains(responseBody, "spyx") {
+				fmt.Println(attack_url)
+			}
+		}
+	}()
+	
+
+
 	for _, url := range urls {
 		jobs <- url
 		
 	}
 	close(jobs)
 	wg.Wait()
-
-	printVariable(findVariables)
+	
+	if (*attack){
+		printVariable(findVariables)
+	}
 }
+
  
