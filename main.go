@@ -180,7 +180,7 @@ $$ |   $$ |$$$$$$\   $$$$$$\ $$ /  \__| $$$$$$\   $$$$$$\  $$ |  $$\  $$$$$$\   
 	close(jobs)
 	wg.Wait()
 	
-	if (*attack){
+	if !(*attack){
 		printVariable(findVariables)
 	}
 }
