@@ -20,13 +20,14 @@ import (
 // global variable find
 var findVariables []string
 
-func addToFindVariables(variable string) {
+func addToFindVariables(variable string) bool {
     for _, v := range findVariables {
         if v == variable {
-            return
+            return false
         }
     }
     findVariables = append(findVariables, variable)
+	return true 
 }
 
 func printVariable(variables []string) {
@@ -137,8 +138,9 @@ $$ |   $$ |$$$$$$\   $$$$$$\ $$ /  \__| $$$$$$\   $$$$$$\  $$ |  $$\  $$$$$$\   
 				// Find all variable declarations in the response body
 				matches := varDeclaration.FindAllStringSubmatch(string(body), -1)
 				for _, match := range matches {
-					addToFindVariables(match[1])
-					if (*attack){
+					added := addToFindVariables(match[1])
+					if (*attack && added){
+						fmt.Println("Attack")
 						ap := AttackPayload{url:url,payload:match[1]}
 						attackJobs <- ap
 					}
