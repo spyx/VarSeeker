@@ -2,8 +2,6 @@
 
 VarSeeker is small utility which get list of url from stdin and search from all possible variables inside. This is good for search hidden parameters. For example some javascript file can use some variable from GET parameter and this parameter is being reflected back. This scrip only search for it. 
 
-/home/kali/Projects/ParamAngler/README.md/home/kali/Projects/ParamAngler/README.md
-
 
 # Instalation
 
