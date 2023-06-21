@@ -1,6 +1,6 @@
 # VarSeeker 
 
-VarSeeker is small utility which get list of url from stdin and search from all possible variables inside. This is good for search hidden parameters. For example some javascript file can use some variable from GET parameter and this parameter is being reflected back. This scrip only search for it. 
+VarSeeker is small utility which get list of url from stdin and search from all possible variables inside. This is good for search hidden parameters. For example some javascript file can use some variable from GET parameter and this parameter is being reflected back. This scrip only search for it. Added -w parameter to scrape variables from wayback machine and test it on url you suplied. 
 
 
 # Instalation
@@ -39,7 +39,7 @@ Options:
   -s    hide banner
   -t int
         Number of goroutines to use (default 1)
-
+  -w    scrape wayback machine
 ```
 
 
