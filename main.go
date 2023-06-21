@@ -12,6 +12,7 @@ import (
 	"sync"
 	"context"
 	"strings"
+	"encoding/json"
 	//"time"
 
 	"github.com/chromedp/chromedp"
@@ -19,6 +20,7 @@ import (
 
 // global variable find
 var findVariables []string
+type ResponseData [][]string
 
 func addToFindVariables(variable string) bool {
     for _, v := range findVariables {
@@ -46,6 +48,7 @@ func main() {
     help := flag.Bool("h",false,"display usage information")
 	silent := flag.Bool("s", false, "hide banner")
 	attack := flag.Bool("a",false, "attack mode")
+	waybackCheck := flag.Bool("w", false, "scrape wayback machine")
 	flag.Parse()
 
 	
@@ -80,8 +83,13 @@ $$ |   $$ |$$$$$$\   $$$$$$\ $$ /  \__| $$$$$$\   $$$$$$\  $$ |  $$\  $$$$$$\   
 		payload string
 	}
 
+	type WaybackUrls struct {
+		url string
+		waybackurl string 
+	}
+
 	attackJobs := make(chan AttackPayload)
-	jobs := make(chan string)
+	jobs := make(chan WaybackUrls)
 	var wg sync.WaitGroup
 	//var attackWg sync.WaitGroup
     // Create a slice to hold the URLs
@@ -120,8 +128,18 @@ $$ |   $$ |$$$$$$\   $$$$$$\ $$ /  \__| $$$$$$\   $$$$$$\  $$ |  $$\  $$$$$$\   
 		wg.Add(1)
 		go func() {
 			for url := range jobs {
+				//fmt.Println(url.url)
+				realUrl := url.url
+				spyxUrl := url.waybackurl
+				var req string
+				if *waybackCheck {
+					req = spyxUrl
+				} else {
+					req = realUrl
+				}
+				
 				// Send a GET request to the URL
-				resp, err := http.Get(url)
+				resp, err := http.Get(req)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error fetching %s: %v\n", url, err)
 					continue
@@ -140,8 +158,8 @@ $$ |   $$ |$$$$$$\   $$$$$$\ $$ /  \__| $$$$$$\   $$$$$$\  $$ |  $$\  $$$$$$\   
 				for _, match := range matches {
 					added := addToFindVariables(match[1])
 					if (*attack && added){
-						fmt.Println("Attack")
-						ap := AttackPayload{url:url,payload:match[1]}
+						//fmt.Println("Attack")
+						ap := AttackPayload{url:url.url,payload:match[1]}
 						attackJobs <- ap
 					}
 				}
@@ -160,6 +178,7 @@ $$ |   $$ |$$$$$$\   $$$$$$\ $$ /  \__| $$$$$$\   $$$$$$\  $$ |  $$\  $$$$$$\   
 	go func() {
 		for value := range attackJobs {
 			attack_url := value.url+"?"+value.payload+"=spyx"
+			//fmt.Println(attack_url)
 			ctx, cancel := chromedp.NewContext(context.Background())
 			defer cancel()
 			var responseBody string
@@ -176,7 +195,54 @@ $$ |   $$ |$$$$$$\   $$$$$$\ $$ /  \__| $$$$$$\   $$$$$$\  $$ |  $$\  $$$$$$\   
 
 
 	for _, url := range urls {
-		jobs <- url
+		if *waybackCheck {
+			//fmt.Println(url)
+			originalUrl := url
+			
+			url := "http://web.archive.org/cdx/search/cdx?url="+url+"&output=json&limit=-10&filter=statuscode:200"
+
+        	// Make the HTTP request
+        	resp, err := http.Get(url)
+        	if err != nil {
+                fmt.Printf("Failed to make the request: %v", err)
+                return
+        	}
+        	defer resp.Body.Close()
+
+        	// Read the response body
+        	body, err := ioutil.ReadAll(resp.Body)
+        	if err != nil {
+                fmt.Printf("Failed to read the response body: %v", err)
+                return
+        	}
+
+        	// Parse the JSON data
+        	var data ResponseData
+        	err = json.Unmarshal(body, &data)
+        	if err != nil {
+            	    fmt.Printf("Failed to parse the JSON data: %v", err)
+            	    return
+        	}
+
+        	// Print all the digest values
+			if len(data) == 0 {
+				fmt.Println("Wayback machine did not find any data for this domain")
+			}
+
+        	for i := 1; i < len(data); i++ {
+                //fmt.Println(data[i][1])
+				waybackUrl := "https://web.archive.org/web/"+data[i][1]+"/"+data[i][2]
+				//fmt.Println(waybackUrl)
+				testUrl := WaybackUrls{url:originalUrl,waybackurl:waybackUrl}
+				jobs <- testUrl
+        	}
+
+
+		} else {
+			testUrl := WaybackUrls {url:url,waybackurl:""}
+			jobs <- testUrl
+		}
+		
 		
 	}
 	close(jobs)
