@@ -8,7 +8,7 @@ VarSeeker is small utility which get list of url from stdin and search from all 
 With go you can use this command
 
 ```
-go install github.com/spyx/ParamVarSeekerAngler@latest
+go install github.com/spyx/VarSeeker@latest
 ```
 
 # Usage
